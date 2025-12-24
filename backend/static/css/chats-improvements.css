@@ -1,0 +1,788 @@
+/**
+ * Улучшения дизайна и оптимизации для страницы чатов
+ * Этот файл содержит улучшения, которые можно добавить к основному CSS
+ * 
+ * Примечание: CSS переменные (--primary, --bg, и т.д.) должны быть определены
+ * в основном файле chats.css или в базовом шаблоне
+ */
+
+/* ==================== УЛУЧШЕНИЯ ТИПОГРАФИКИ ==================== */
+
+/* Дополнительные CSS переменные для улучшений */
+:root {
+    /* Улучшенная типографическая шкала */
+    --font-size-xs: 0.625rem;    /* 10px */
+    --font-size-sm: 0.75rem;     /* 12px */
+    --font-size-base: 0.875rem;   /* 14px */
+    --font-size-md: 1rem;         /* 16px */
+    --font-size-lg: 1.125rem;     /* 18px */
+    --font-size-xl: 1.25rem;      /* 20px */
+    --font-size-2xl: 1.5rem;      /* 24px */
+    
+    /* Улучшенные spacing */
+    --spacing-xs: 0.25rem;   /* 4px */
+    --spacing-sm: 0.5rem;    /* 8px */
+    --spacing-md: 0.75rem;   /* 12px */
+    --spacing-lg: 1rem;      /* 16px */
+    --spacing-xl: 1.5rem;    /* 24px */
+    --spacing-2xl: 2rem;     /* 32px */
+    
+    /* Улучшенные тени */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* Плавные переходы */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Улучшенные радиусы */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 9999px;
+}
+
+/* ==================== УЛУЧШЕННЫЕ АНИМАЦИИ ==================== */
+
+/* Плавное появление элементов */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Пульсация для важных элементов */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Плавное мигание для срочных элементов */
+@keyframes gentleBlink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.85;
+    }
+}
+
+/* Применение анимаций */
+.chat-card {
+    animation: fadeIn var(--transition-base) ease-out;
+    will-change: transform, opacity;
+}
+
+.chat-card:hover {
+    transform: translateY(-2px);
+    transition: transform var(--transition-fast);
+}
+
+.message-row {
+    animation: slideInRight var(--transition-base) ease-out;
+}
+
+/* ==================== УЛУЧШЕННЫЕ КАРТОЧКИ ЧАТОВ ==================== */
+
+.chat-card {
+    /* Улучшенные тени и глубина */
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.chat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.chat-card:hover::before,
+.chat-card.active::before {
+    opacity: 1;
+}
+
+.chat-card:hover {
+    box-shadow: var(--shadow-md);
+    background: var(--card);
+}
+
+.chat-card.active {
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark, var(--primary)));
+}
+
+/* Улучшенные бейджи */
+.unread-count {
+    animation: scaleIn var(--transition-fast);
+    font-weight: 700;
+    min-width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-size: var(--font-size-xs);
+    box-shadow: var(--shadow-sm);
+}
+
+.pool-badge {
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ==================== УЛУЧШЕННЫЕ КНОПКИ ==================== */
+
+.filter-chip,
+.sort-chip {
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-chip::after,
+.sort-chip::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.filter-chip:active::after,
+.sort-chip:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+.filter-chip.active {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.send-button {
+    position: relative;
+    overflow: hidden;
+    transition: all var(--transition-base);
+}
+
+.send-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+}
+
+.send-button:active::before {
+    width: 200px;
+    height: 200px;
+}
+
+.send-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.send-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* ==================== УЛУЧШЕННЫЕ СООБЩЕНИЯ ==================== */
+
+.message-bubble {
+    position: relative;
+    transition: all var(--transition-base);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.message-row.incoming .message-bubble {
+    background: var(--card);
+    border: 1px solid var(--border);
+}
+
+.message-row.outgoing .message-bubble {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark, var(--primary)));
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.message-row:hover .message-bubble {
+    box-shadow: var(--shadow-md);
+}
+
+/* Улучшенное время сообщения */
+.message-time {
+    font-size: var(--font-size-xs);
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+}
+
+.message-row:hover .message-time {
+    opacity: 1;
+}
+
+/* ==================== УЛУЧШЕННЫЙ ПОИСК ==================== */
+
+.search-input {
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.search-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+}
+
+.search-box::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--primary);
+    transition: width var(--transition-base);
+}
+
+.search-input:focus ~ .search-box::after,
+.search-input:focus + .search-box::after {
+    width: 100%;
+}
+
+/* ==================== УЛУЧШЕННЫЕ СОСТОЯНИЯ ЗАГРУЗКИ ==================== */
+
+.chat-skeleton-card {
+    animation: pulse 1.5s ease-in-out infinite;
+    background: linear-gradient(
+        90deg,
+        var(--bg-secondary) 0%,
+        var(--card) 50%,
+        var(--bg-secondary) 100%
+    );
+    background-size: 200% 100%;
+    animation: loading 1.5s ease-in-out infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ==================== УЛУЧШЕННАЯ АДАПТИВНОСТЬ ==================== */
+
+/* Планшеты */
+@media (max-width: 1024px) {
+    .chats-container {
+        grid-template-columns: 280px 1fr;
+    }
+    
+    .sidebar {
+        max-width: 280px;
+    }
+    
+    .filter-chip {
+        font-size: var(--font-size-xs);
+        padding: 0.375rem 0.625rem;
+    }
+}
+
+/* Мобильные устройства */
+@media (max-width: 768px) {
+    .chats-container {
+        grid-template-columns: 1fr;
+        position: relative;
+    }
+    
+    .sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+        max-width: 100%;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform var(--transition-base);
+        box-shadow: var(--shadow-xl);
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    .chat-main {
+        width: 100%;
+    }
+    
+    .filter-chip {
+        min-width: 80px;
+        font-size: var(--font-size-xs);
+    }
+    
+    .chat-header-bar {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+    
+    .input-section {
+        padding: var(--spacing-sm);
+    }
+    
+    /* Увеличиваем размеры кнопок для touch */
+    .send-button,
+    .media-button,
+    .quick-action {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Очень маленькие экраны */
+@media (max-width: 480px) {
+    .sidebar-top {
+        padding: var(--spacing-sm);
+    }
+    
+    .sidebar-title {
+        font-size: var(--font-size-lg);
+    }
+    
+    .filters-row-main {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .chat-card {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* ==================== УЛУЧШЕННАЯ ДОСТУПНОСТЬ ==================== */
+
+/* Focus states для keyboard navigation */
+.filter-chip:focus,
+.sort-chip:focus,
+.send-button:focus,
+.media-button:focus,
+.quick-action:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Улучшенная видимость для screen readers */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Улучшенная видимость для screen readers (альтернативный вариант) */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Улучшенный контраст для важных элементов */
+.response-time.urgent {
+    font-weight: 700;
+    animation: gentleBlink 2s ease-in-out infinite;
+}
+
+/* ==================== УЛУЧШЕННЫЕ МОДАЛЬНЫЕ ОКНА ==================== */
+
+.modal-backdrop {
+    animation: fadeIn var(--transition-base);
+    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.modal {
+    animation: scaleIn var(--transition-base);
+    box-shadow: var(--shadow-xl);
+    border-radius: var(--radius-lg);
+}
+
+/* ==================== УЛУЧШЕННЫЕ TOAST УВЕДОМЛЕНИЯ ==================== */
+
+.toast {
+    animation: slideInRight var(--transition-base);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-md);
+    backdrop-filter: blur(10px);
+}
+
+.toast-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.toast-error {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.toast-info {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+/* ==================== ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ ==================== */
+
+/* Использование will-change для анимируемых элементов */
+.chat-card,
+.message-row,
+.filter-chip,
+.send-button {
+    will-change: transform, opacity;
+}
+
+/* Оптимизация рендеринга */
+.chats-scroll {
+    contain: layout style paint;
+}
+
+.messages-view {
+    contain: layout style paint;
+    transform: translateZ(0); /* Создает новый слой композиции */
+}
+
+/* Lazy loading для изображений */
+/* Примечание: loading и decoding - это HTML атрибуты, устанавливаются в JavaScript */
+/* Стили для изображений объявлений находятся в основном файле chats.css */
+
+/* ==================== УЛУЧШЕННЫЕ ПЕРЕХОДЫ ==================== */
+
+/* Плавные переходы для всех интерактивных элементов */
+* {
+    transition-property: color, background-color, border-color, transform, opacity, box-shadow;
+    transition-duration: var(--transition-base);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Отключаем переходы для анимаций производительности */
+.chat-card,
+.message-row {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+/* ==================== УЛУЧШЕННЫЕ ЦВЕТА И КОНТРАСТ ==================== */
+
+/* Улучшенный контраст для текста */
+.chat-client-name {
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+.chat-preview {
+    color: var(--text-secondary, var(--text-muted));
+    line-height: 1.5;
+}
+
+/* Улучшенная видимость для активных элементов */
+.chat-card.active .chat-client-name,
+.chat-card.active .chat-preview {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+/* ==================== УЛУЧШЕННЫЕ ИНДИКАТОРЫ ==================== */
+
+/* Плавная анимация для индикатора подключения */
+#connection-indicator {
+    animation: slideInRight var(--transition-base);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Улучшенный скроллбар */
+.chats-scroll::-webkit-scrollbar,
+.messages-view::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.chats-scroll::-webkit-scrollbar-track,
+.messages-view::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-full);
+}
+
+.chats-scroll::-webkit-scrollbar-thumb,
+.messages-view::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-base);
+}
+
+.chats-scroll::-webkit-scrollbar-thumb:hover,
+.messages-view::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* ==================== УЛУЧШЕННЫЕ ПУСТЫЕ СОСТОЯНИЯ ==================== */
+
+.empty-list,
+.empty-chat {
+    animation: fadeIn var(--transition-slow);
+}
+
+.empty-list-icon,
+.empty-chat-icon {
+    font-size: 4rem;
+    opacity: 0.5;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* ==================== УЛУЧШЕННЫЕ БЫСТРЫЕ ДЕЙСТВИЯ ==================== */
+
+.quick-action-btn {
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.quick-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.quick-action-btn:active {
+    transform: translateY(0);
+}
+
+/* Градиент для кнопки "Взять" */
+.quick-take-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.quick-take-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* ==================== УЛУЧШЕННЫЕ ФИЛЬТРЫ ==================== */
+
+.filter-select {
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+.filter-select:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ==================== УЛУЧШЕННЫЙ INPUT ==================== */
+
+.message-field {
+    transition: all var(--transition-base);
+    resize: none;
+}
+
+.message-field:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--primary);
+}
+
+/* ==================== УЛУЧШЕННЫЕ МЕДИА КНОПКИ ==================== */
+
+.media-button {
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.media-button:hover {
+    transform: scale(1.1);
+    background: var(--bg);
+}
+
+.media-button:active {
+    transform: scale(0.95);
+}
+
+/* ==================== УЛУЧШЕННЫЕ БЫСТРЫЕ ОТВЕТЫ ==================== */
+
+.quick-replies-menu {
+    animation: scaleIn var(--transition-base);
+    box-shadow: var(--shadow-xl);
+    backdrop-filter: blur(10px);
+}
+
+.quick-reply-item {
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.quick-reply-item:hover {
+    background: var(--bg);
+    transform: translateX(4px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ==================== УЛУЧШЕННАЯ ПРАВАЯ ПАНЕЛЬ ==================== */
+
+.listing-sidebar {
+    border-left: 1px solid var(--border);
+    background: var(--card);
+}
+
+.listing-card {
+    animation: fadeIn var(--transition-base);
+    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.listing-card-image {
+    transition: transform var(--transition-slow);
+}
+
+.listing-card:hover .listing-card-image {
+    transform: scale(1.05);
+}
+
+.listing-card-link {
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.listing-card-link:hover {
+    transform: translateX(4px);
+    color: var(--primary);
+}
+
+/* ==================== УЛУЧШЕННЫЙ HEADER ==================== */
+
+.chat-header-bar {
+    backdrop-filter: blur(10px);
+    background: rgba(var(--card-rgb, 255, 255, 255), 0.9);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ==================== ДОПОЛНИТЕЛЬНЫЕ УЛУЧШЕНИЯ ==================== */
+
+/* Плавное появление счетчиков */
+#my-chats-count,
+#pool-chats-count,
+#archive-count,
+#blocked-count {
+    transition: all var(--transition-base);
+    display: inline-block;
+}
+
+/* Улучшенная видимость для важных уведомлений */
+#avito-warning {
+    animation: slideInRight var(--transition-base);
+    border-left: 4px solid #ef4444;
+}
+
+/* Улучшенный скролл вниз */
+.scroll-bottom-btn {
+    animation: fadeIn var(--transition-base);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+}
+
+.scroll-bottom-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+/* Улучшенная загрузка */
+.load-more-btn {
+    transition: all var(--transition-base);
+}
+
+.load-more-btn:hover:not(:disabled) {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+

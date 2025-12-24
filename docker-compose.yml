@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    volumes:
+      - .:/app:cached
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_PORT=5000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7
+    restart: unless-stopped

@@ -1,0 +1,16 @@
+__pycache__/
+.git/
+.venv/
+venv/
+*.pyc
+*.pyo
+*.pyd
+env/
+build/
+dist/
+node_modules/
+frontend/node_modules/
+backend/osagaming_crm.db
+logs/
+*.log
+*.sqlite3

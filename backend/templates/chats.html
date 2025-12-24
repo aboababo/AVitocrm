@@ -1,0 +1,2100 @@
+{% extends "base.html" %}
+
+{% block title %}Чаты - OSAGAMING CRM{% endblock %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chats.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chats-improvements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chats-accessibility.css') }}">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        /* Убеждаемся, что страница занимает весь экран без прокрутки */
+        html {
+            height: 100%;
+            overflow: hidden; /* Убираем прокрутку на уровне html */
+        }
+        
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Убираем прокрутку на уровне body */
+        }
+        
+        /* Убираем padding и margin у main-content для страницы чатов */
+        body .main-content {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            /* Высота: 100vh минус высота header (padding 0.85rem*2 + контент ~50px = ~70px) */
+            height: calc(100vh - 70px) !important;
+            max-height: calc(100vh - 70px) !important;
+            min-height: calc(100vh - 70px) !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+        }
+        
+        /* Контейнер контента должен занимать оставшееся место после header */
+        .chats-page {
+            /* Занимает 100% высоты родителя (main-content) */
+            height: 100%;
+            max-height: 100%;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg);
+            margin: 0;
+            padding: 0;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        /* Основной layout - 3 колонки: чаты | сообщения | объявление */
+        .chats-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 320px 1fr 400px; /* Увеличена правая панель для объявления */
+            gap: 0;
+            overflow: hidden;
+            min-height: 0;
+            position: relative;
+            width: 100%;
+        }
+        
+        /* Адаптивность: на маленьких экранах скрываем правую панель */
+        @media (max-width: 1200px) {
+            .chats-container {
+                grid-template-columns: 320px 1fr;
+            }
+            .listing-sidebar {
+                display: none;
+            }
+        }
+
+        /* Боковая панель - ОПТИМИЗИРОВАНО: убраны blur и сложные эффекты */
+        .sidebar {
+            background: var(--card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            min-width: 0; /* Важно для grid */
+            max-width: 320px; /* Фиксированная ширина */
+        }
+
+        .sidebar-top {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--card);
+            flex-shrink: 0;
+        }
+
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 900;
+            margin: 0 0 0.75rem 0;
+            color: var(--primary);
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 0.5rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) + 2px);
+            color: var(--text);
+            font-size: 0.8125rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--card);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.625rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .filters-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 0.375rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filters-row-main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.375rem;
+        }
+
+        .filters-row-secondary {
+            display: flex;
+            gap: 0.375rem;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 0.375rem 0.75rem;
+            border: 1.5px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            transition: all 0.2s ease;
+            position: relative;
+            min-height: 28px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .filter-chip:hover {
+            background: var(--bg);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 12px rgba(59, 130, 246, 0.3);
+            font-weight: 700;
+        }
+
+        .filter-chip.active:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+        }
+
+        .filter-chip span {
+            font-weight: 700;
+            opacity: 0.9;
+        }
+
+        .filter-chip.active span {
+            opacity: 1;
+        }
+
+        .sort-buttons-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .sort-chip {
+            padding: 0.375rem 0.625rem;
+            border: 1.5px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.2s ease;
+            min-height: 26px;
+        }
+
+        .sort-chip:hover {
+            background: var(--bg);
+            border-color: var(--primary);
+        }
+
+        .sort-chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .return-all-btn {
+            padding: 0.375rem 0.75rem;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: 1.5px solid #dc2626;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+            min-height: 26px;
+        }
+
+        .return-all-btn:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            border-color: #b91c1c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+        }
+
+        .return-all-btn:active {
+            transform: translateY(0);
+        }
+
+        .return-all-btn.hidden {
+            display: none;
+        }
+
+        .extract-product-urls-btn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            border: 2px solid #7c3aed;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+            min-height: 34px;
+        }
+
+        .extract-product-urls-btn:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            border-color: #6d28d9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+        }
+
+        .extract-product-urls-btn:active {
+            transform: translateY(0);
+        }
+
+        .extract-product-urls-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .filter-chip.pool.active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Список чатов */
+        .chats-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.375rem;
+            min-height: 0;
+        }
+
+        .chats-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chats-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chats-scroll::-webkit-scrollbar-thumb {
+            background: color-mix(in srgb, var(--text-muted) 30%, transparent);
+            border-radius: 3px;
+        }
+
+        .chats-scroll::-webkit-scrollbar-thumb:hover {
+            background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+        }
+
+        .load-more-btn {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            border-radius: calc(var(--radius));
+            cursor: pointer;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .load-more-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .chat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) + 4px);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: none !important; /* Убрано для предотвращения моргания при обновлении */
+            cursor: pointer;
+        }
+        
+        .chat-card * {
+            transition: none !important; /* Убираем transitions для всех элементов внутри чата */
+        }
+        
+        /* Анимация мигания должна работать, несмотря на transition: none */
+        .chat-card.blink-red {
+            animation: blinkRed 1s infinite !important;
+        }
+
+        .chat-card:hover {
+            border-color: var(--primary);
+            background: var(--bg);
+        }
+
+        .chat-card.selected {
+            background: var(--bg);
+            border-color: var(--primary);
+        }
+
+        .chat-card.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .chat-card.pool {
+            border-left: 4px solid #10b981;
+        }
+
+        /* Мигание для чатов без ответа более 20 минут */
+        .chat-card.blink-red {
+            animation: blinkRed 1s infinite;
+            border-left: 4px solid #ef4444;
+        }
+
+        @keyframes blinkRed {
+            0%, 100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+            50% {
+                opacity: 0.7;
+                box-shadow: 0 0 10px 3px rgba(239, 68, 68, 0.6);
+            }
+        }
+
+        .chat-card.delivery {
+            border-left: 4px solid #8b5cf6;
+        }
+
+
+        .chat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.375rem;
+        }
+
+        .chat-card-title {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-client-name {
+            font-weight: 700;
+            font-size: 0.8125rem;
+            margin-bottom: 0.1875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-shop-name {
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            padding: 0.125rem 0.375rem;
+            border-radius: 8px;
+            display: inline-block;
+            font-weight: 500;
+        }
+
+        .chat-card.active .chat-shop-name {
+            background: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .chat-badges {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .pool-badge {
+            background: #10b981;
+            color: white;
+            padding: 0.1875rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.625rem;
+            font-weight: 700;
+        }
+
+        .unread-count {
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.625rem;
+            font-weight: 700;
+        }
+
+        .chat-preview {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+            margin-bottom: 0.375rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .chat-card.active .chat-preview {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .chat-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-card.active .chat-footer {
+            border-top-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .priority-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .priority-urgent {
+            background: #ef4444;
+            color: white;
+        }
+
+        .priority-new {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .priority-active {
+            background: #10b981;
+            color: white;
+        }
+
+        .priority-delivery {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .response-time {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 0.1875rem 0.375rem;
+            border-radius: calc(var(--radius));
+            display: inline-flex;
+            align-items: center;
+            gap: 0.1875rem;
+        }
+
+        .response-time.urgent {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .response-time.warning {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .response-time.normal {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        /* ОПТИМИЗИРОВАНО: убрана анимация мигания */
+        .response-time.blink {
+            color: #ef4444;
+            font-weight: 700;
+        }
+
+        .chat-card.active .response-time {
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-card.active .response-time.urgent {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .pool-action-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: calc(var(--radius) + 2px);
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.875rem;
+            margin-top: 0.75rem;
+        }
+
+        .pool-action-btn:hover {
+            background: #059669;
+        }
+
+        /* Быстрая кнопка "Взять" в заголовке карточки */
+        .quick-take-btn {
+            padding: 0.375rem 0.75rem;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: calc(var(--radius));
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex-shrink: 0;
+        }
+
+        .quick-take-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: scale(1.05);
+        }
+
+        .quick-take-btn:active {
+            transform: scale(0.98);
+        }
+
+        .quick-take-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Быстрые действия при наведении */
+        .chat-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .quick-action-btn {
+            padding: 0.375rem 0.625rem;
+            background: var(--bg-secondary);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius));
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex-shrink: 0;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .quick-action-btn.return {
+            background: #f59e0b;
+            color: white;
+            border-color: transparent;
+        }
+
+        .quick-action-btn.return:hover {
+            background: #d97706;
+        }
+
+        .return-action-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: calc(var(--radius) + 2px);
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.875rem;
+            margin-top: 0.75rem;
+        }
+
+        .return-action-btn:hover {
+            background: #d97706;
+        }
+
+        /* Основная область чата */
+        /* Правая панель с объявлением */
+        .listing-sidebar {
+            background: var(--card);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            min-width: 0; /* Важно для grid */
+            width: 400px; /* Увеличена ширина для лучшего использования пространства */
+            max-width: 500px; /* Максимальная ширина */
+            flex: 0 0 400px; /* Фиксированная ширина в grid */
+        }
+
+        .listing-sidebar-header {
+            padding: 0.75rem 1rem; /* Уменьшили padding */
+            border-bottom: 1px solid var(--border);
+            background: var(--card);
+            flex-shrink: 0;
+        }
+
+        .listing-sidebar-title {
+            font-size: 1rem; /* Уменьшили размер шрифта */
+            font-weight: 700;
+            margin: 0;
+            color: var(--text);
+        }
+
+        .listing-sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem; /* Увеличен padding для лучшего использования пространства */
+        }
+
+        .listing-sidebar-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .listing-sidebar-empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .listing-sidebar-empty p {
+            margin: 0;
+            font-size: 0.875rem;
+        }
+
+        /* Стили для отображения объявления */
+        .listing-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            padding: 1rem; /* Увеличен padding для лучшего использования пространства */
+            margin-bottom: 0.75rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .listing-card-image {
+            width: 100%;
+            border-radius: var(--radius);
+            max-height: 350px; /* Увеличена высота изображения для лучшего использования пространства */
+            object-fit: cover;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .listing-card-title {
+            font-size: 1.125rem; /* Увеличен размер шрифта */
+            font-weight: 600;
+            margin: 0 0 0.75rem 0;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        .listing-card-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0 0 1rem 0;
+        }
+
+        .listing-card-actions {
+            margin-top: 1rem;
+        }
+
+        .listing-card-link {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--primary);
+            color: white;
+            text-align: center;
+            border-radius: var(--radius);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+        }
+
+        .listing-card-link:hover {
+            background: var(--primary-dark);
+        }
+
+        .chat-main {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: var(--bg);
+            overflow: hidden;
+            position: relative;
+            min-width: 0; /* Важно для grid */
+            max-width: 100%; /* Предотвращает выход за границы */
+        }
+
+        .chat-window {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .chat-header-bar {
+            padding: 1rem 1.25rem;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0; /* Не сжимается */
+            flex-grow: 0; /* Не растягивается */
+            align-items: flex-start; /* Выравнивание по верху для переноса кнопок */
+            flex-shrink: 0;
+            gap: 1rem; /* Отступ между элементами */
+            min-width: 0; /* Важно для grid */
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .chat-header-info {
+            flex: 1;
+            min-width: 0;
+            max-width: 50%; /* Ограничиваем, чтобы оставить место для кнопок */
+            overflow: hidden;
+        }
+
+        .chat-header-name {
+            font-size: 1.125rem;
+            font-weight: 800;
+            margin: 0 0 0.25rem 0;
+            color: var(--primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-header-details {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        .chat-header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 1;
+            flex-wrap: wrap; /* Позволяет кнопкам переноситься на новую строку */
+            max-width: 50%; /* Ограничиваем ширину, чтобы не перекрывать информацию */
+            min-width: 0;
+        }
+
+        .header-action-btn {
+            padding: 0.5rem 0.875rem;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            border-radius: calc(var(--radius));
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            white-space: nowrap; /* Предотвращает перенос текста внутри кнопки */
+            flex-shrink: 0; /* Не сжимается */
+            max-width: 200px; /* Ограничиваем максимальную ширину кнопок */
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-action-btn:hover {
+            background: var(--bg-secondary);
+        }
+
+        .header-action-btn.primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .header-action-btn.primary:hover {
+            background: var(--primary);
+            opacity: 0.9;
+        }
+
+        .messages-view {
+            flex: 1 1 auto; /* Может сжиматься, но не растягивается за пределы */
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            min-height: 0; /* Важно для flex - позволяет сжиматься */
+            scroll-behavior: smooth;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            display: block;
+        }
+
+        .messages-view::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-view::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages-view::-webkit-scrollbar-thumb {
+            background: color-mix(in srgb, var(--text-muted) 30%, transparent);
+            border-radius: 4px;
+        }
+
+        .messages-view::-webkit-scrollbar-thumb:hover {
+            background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+        }
+
+        .message-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1.25rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .message-row.incoming {
+            align-items: flex-start;
+        }
+
+        .message-row.outgoing {
+            align-items: flex-end;
+        }
+
+        .message-author {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            padding: 0 0.75rem;
+            font-weight: 600;
+            opacity: 0.85;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-style: italic;
+        }
+        
+        .message-row.outgoing .message-author {
+            justify-content: flex-end;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .message-row.incoming .message-author {
+            justify-content: flex-start;
+        }
+        
+        /* Подпись отправителя видна только в интерфейсе, не отправляется клиенту */
+        .message-author::before {
+            content: "👤 ";
+            opacity: 0.7;
+        }
+
+        .message-wrapper {
+            max-width: 70%;
+            min-width: 0; /* Важно для flex */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-bubble {
+            padding: 1rem 1.375rem;
+            border-radius: calc(var(--radius) + 8px);
+            font-size: 0.9375rem;
+            line-height: 1.65;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            min-width: 0; /* Важно для flex */
+        }
+
+        .message-row.incoming .message-bubble {
+            background: var(--bg-secondary);
+            color: var(--text);
+            border-bottom-left-radius: 8px;
+        }
+
+        .message-row.outgoing .message-bubble {
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 8px;
+        }
+
+        .message-time {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            padding: 0 0.75rem;
+            opacity: 0.7;
+        }
+
+        .input-section {
+            padding: 1.25rem 2rem 1.25rem 2rem; /* Уменьшен padding для предотвращения обрезания */
+            background: var(--card);
+            border-top: 2px solid var(--border);
+            flex-shrink: 0; /* Не сжимается */
+            flex-grow: 0; /* Не растягивается */
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 0;
+            overflow: visible; /* Убеждаемся, что кнопки не обрезаются */
+            margin-bottom: 0; /* Убираем лишние отступы */
+            position: relative; /* Для правильного позиционирования */
+            z-index: 10; /* Убеждаемся, что секция поверх других элементов */
+        }
+
+        .quick-actions-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem; /* Уменьшен отступ */
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            padding: 0.5rem 0.875rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius));
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .quick-action:hover {
+            background: var(--bg);
+        }
+
+        .quick-action.is-disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .send-button:disabled,
+        .message-field:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.875rem;
+            align-items: center; /* Центрируем все элементы по вертикали */
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 0; /* Важно для flex */
+            flex-wrap: nowrap; /* Предотвращает перенос элементов */
+            overflow: visible; /* Убеждаемся, что кнопки не обрезаются */
+            position: relative; /* Для правильного позиционирования */
+            margin-top: 0; /* Убран отступ сверху */
+            margin-bottom: 0; /* Убираем нижний отступ */
+            padding-bottom: 0; /* Убираем нижний padding */
+        }
+
+        .message-field {
+            flex: 1;
+            padding: 1.125rem 1.5rem;
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: calc(var(--radius) + 6px);
+            color: var(--text);
+            font-size: 0.9375rem;
+            resize: none;
+            min-height: 56px;
+            height: 56px; /* Фиксированная высота для прямого выравнивания */
+            max-height: 140px;
+            font-family: inherit;
+            min-width: 0; /* Важно для flex - позволяет сжиматься */
+            box-sizing: border-box;
+            vertical-align: middle; /* Прямое выравнивание */
+            line-height: 1.5; /* Правильная высота строки */
+        }
+
+        .message-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg);
+        }
+
+        .send-button {
+            padding: 1.125rem 2.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: calc(var(--radius) + 6px);
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 0.9375rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            height: 56px; /* Фиксированная высота для прямого выравнивания */
+            flex-shrink: 0; /* Предотвращает сжатие кнопки */
+            box-sizing: border-box;
+            vertical-align: middle; /* Прямое выравнивание */
+        }
+
+        .send-button:hover {
+            opacity: 0.9;
+        }
+
+        .send-button:active {
+            opacity: 0.8;
+        }
+
+        .media-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-shrink: 0; /* Предотвращает сжатие кнопок */
+            margin-right: 0.5rem; /* Отступ от поля ввода */
+        }
+
+        .media-button {
+            padding: 1.125rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) + 6px);
+            flex-shrink: 0; /* Предотвращает сжатие кнопок */
+            min-width: 48px; /* Минимальная ширина для кнопок */
+            height: 56px; /* Высота как у поля ввода */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.125rem;
+            transition: background 0.2s, border-color 0.2s; /* Только цветовые переходы, без transform */
+            position: relative;
+            box-sizing: border-box;
+            vertical-align: middle; /* Прямое выравнивание */
+        }
+
+        .media-button:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .media-button:active {
+            opacity: 0.8;
+            transform: translateY(0);
+        }
+
+        .media-button.recording {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            color: #ef4444;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .image-button {
+            padding: 1.125rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) + 6px);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.125rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            height: 44px;
+            transition: all 0.2s;
+        }
+
+        .image-button:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--primary);
+        }
+
+        .image-button:active {
+            opacity: 0.8;
+        }
+
+        /* Убеждаемся, что контейнер сообщений видим и правильно позиционирован */
+        #chat-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            position: relative;
+            box-sizing: border-box;
+        }
+        
+        #chat-content[style*="display: none"] {
+            display: none !important;
+        }
+        
+        #messages-container {
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            flex: 1;
+            min-height: 0;
+            display: block;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1; /* Убеждаемся, что сообщения поверх других элементов */
+        }
+        
+        /* Убеждаемся, что сообщения не скрыты */
+        .message-row {
+            display: flex;
+            visibility: visible;
+            opacity: 1;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        /* Исправляем отображение пустого состояния в контейнере сообщений */
+        #messages-container .empty-chat {
+            position: relative;
+            height: auto;
+            min-height: 200px;
+            z-index: 1;
+        }
+        
+        /* Убеждаемся, что сообщения видны и не перекрываются */
+        #messages-container .message-row {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .empty-chat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 4rem;
+            text-align: center;
+            color: var(--text-muted);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            box-sizing: border-box;
+            z-index: 1;
+        }
+
+        .empty-chat-icon {
+            font-size: 6rem;
+            margin-bottom: 2rem;
+            opacity: 0.4;
+        }
+
+        .empty-chat h3 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin: 0 0 0.75rem 0;
+            color: var(--primary);
+        }
+
+        .empty-chat p {
+            font-size: 1.125rem;
+            opacity: 0.7;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .empty-list {
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-list-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .quick-replies-menu {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: calc(var(--radius) + 8px);
+            z-index: 1000;
+            display: none;
+            margin-bottom: 0.875rem;
+            max-height: 450px;
+            overflow: hidden;
+        }
+
+        .quick-replies-menu.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quick-replies-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 2px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .quick-replies-title {
+            font-weight: 800;
+            font-size: 1.125rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quick-replies-body {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-height: 350px;
+            padding: 0.5rem;
+        }
+
+        .quick-replies-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .quick-replies-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .quick-replies-body::-webkit-scrollbar-thumb {
+            background: color-mix(in srgb, var(--text-muted) 30%, transparent);
+            border-radius: 3px;
+        }
+
+        .quick-replies-body::-webkit-scrollbar-thumb:hover {
+            background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+        }
+
+        .quick-reply-item {
+            padding: 1rem 1.25rem;
+            margin: 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: calc(var(--radius) + 4px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--card);
+        }
+
+        .quick-reply-item:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary);
+        }
+
+        .quick-reply-shortcut {
+            background: var(--primary);
+            color: white;
+            padding: 0.625rem 1rem;
+            border-radius: calc(var(--radius) + 2px);
+            font-weight: 800;
+            font-size: 0.8125rem;
+            font-family: 'Courier New', monospace;
+            flex-shrink: 0;
+        }
+
+        .quick-reply-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .quick-reply-text {
+            font-size: 0.9375rem;
+            color: var(--text);
+            line-height: 1.6;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .quick-reply-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quick-reply-send {
+            padding: 0.75rem 1.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: calc(var(--radius) + 2px);
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .quick-reply-send:hover {
+            opacity: 0.9;
+        }
+
+        .quick-reply-send:active {
+            opacity: 0.8;
+        }
+
+        .quick-replies-footer {
+            padding: 1rem 1.5rem;
+            border-top: 2px solid var(--border);
+            background: var(--bg-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .quick-replies-empty {
+            padding: 3rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .quick-replies-empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .quick-replies-empty-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .quick-replies-empty-link {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border-radius: calc(var(--radius));
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .quick-replies-empty-link:hover {
+            opacity: 0.9;
+        }
+
+        .sticky-sidebar-top {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            background: var(--card);
+        }
+
+        /* Стили для header-actions (если кнопка синхронизации понадобится в будущем) */
+        .header-actions {
+            display: none; /* Скрываем, так как кнопка убрана */
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.75rem;
+        }
+
+        .sync-btn {
+            padding: 0.625rem 1.25rem;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            border-radius: calc(var(--radius) + 2px);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sync-btn:hover {
+            background: var(--bg);
+        }
+
+        .sync-btn.syncing {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .sync-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .retry-button {
+            padding: 0.6rem 1rem;
+            border-radius: calc(var(--radius));
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+
+        .retry-button:hover {
+            background: var(--bg-secondary);
+        }
+
+        .scroll-bottom-btn {
+            position: fixed;
+            bottom: 90px;
+            right: 380px; /* Смещаем влево, чтобы не перекрывать правую панель (350px + 30px отступ) */
+            z-index: 9000;
+            padding: 0.75rem 1rem;
+            border-radius: calc(var(--radius) + 4px);
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            cursor: pointer;
+            display: none;
+        }
+        
+        /* На маленьких экранах возвращаем кнопку вправо */
+        @media (max-width: 1200px) {
+            .scroll-bottom-btn {
+                right: 24px;
+            }
+        }
+
+        .scroll-bottom-btn.show {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .unread-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ef4444;
+            color: #fff;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 12000;
+        }
+
+        .modal {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) + 4px);
+            padding: 1.25rem;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        }
+
+        .modal h3 { margin-top: 0; margin-bottom: 0.75rem; }
+        
+        /* Стили для модального окна управления быстрыми ответами */
+        #quick-replies-management-modal .modal {
+            max-width: 800px;
+            width: 90%;
+        }
+        
+        #quick-reply-edit-modal .modal {
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .listing-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: calc(var(--radius));
+            margin-bottom: 1rem;
+            background: var(--bg-secondary);
+        }
+
+        .listing-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        .listing-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .listing-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .listing-info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .listing-description {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--text);
+            line-height: 1.6;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .listing-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .listing-loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .btn-outline {
+            padding: 0.6rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius));
+            background: var(--bg-secondary);
+            cursor: pointer;
+        }
+
+        .btn-danger {
+            padding: 0.6rem 1rem;
+            border: 1px solid #ef4444;
+            background: #ef4444;
+            color: #fff;
+            border-radius: calc(var(--radius));
+            cursor: pointer;
+        }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 11000;
+            width: min(360px, 90vw);
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: calc(var(--radius) + 2px);
+            color: white;
+        }
+
+        .toast-info { background: var(--primary); }
+        .toast-success { background: #10b981; }
+        .toast-error { background: #ef4444; }
+
+        .toast-icon {
+            font-size: 1.25rem;
+        }
+
+        .toast-close {
+            margin-left: auto;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .toast-close:hover { opacity: 1; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="toast-container" class="toast-container"></div>
+<div style="padding: 0 !important; margin: 0 !important; height: 100% !important; overflow: hidden !important; box-sizing: border-box !important; width: 100% !important;">
+        <div class="chats-page">
+            <div class="chats-container">
+                <!-- Боковая панель -->
+                <div class="sidebar">
+                    <div class="sidebar-top sticky-sidebar-top">
+                        <h2 class="sidebar-title">💬 Чаты</h2>
+                        
+                        <!-- Кнопки синхронизации и поиска объявлений убраны - работают автоматически -->
+                        
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input 
+                                type="search" 
+                                id="chat-search" 
+                                class="search-input" 
+                                placeholder="Поиск по чатам..."
+                                oninput="handleSearchInput(this.value)"
+                            >
+                        </div>
+
+                        <div class="filters-container">
+                            <div class="filters-row-main" role="group" aria-label="Фильтры чатов">
+                                <button class="filter-chip active" data-sort="all" aria-label="Показать все чаты" aria-pressed="true" role="button">
+                                    <span aria-hidden="true">📁</span>
+                                    <span>Общий пул</span>
+                                </button>
+                                <button class="filter-chip" data-sort="my" aria-label="Показать мои чаты" aria-pressed="false" role="button">
+                                    <span aria-hidden="true">👤</span>
+                                    <span>Мои чаты</span>
+                                    <span id="my-chats-count" aria-label="Количество моих чатов">(0)</span>
+                                </button>
+                                <!-- Кнопка "Найти объявления" убрана - работает автоматически -->
+                                <button class="filter-chip" data-sort="completed" aria-label="Показать завершенные чаты" aria-pressed="false" role="button">
+                                    <span aria-hidden="true">✅</span>
+                                    <span>Завершенные</span>
+                                    <span id="archive-count" aria-label="Количество завершенных чатов">(0)</span>
+                                </button>
+                                <button class="filter-chip" data-sort="blocked" aria-label="Показать заблокированные чаты" aria-pressed="false" role="button">
+                                    <span aria-hidden="true">🚫</span>
+                                    <span>Заблокированные</span>
+                                    <span id="blocked-count" aria-label="Количество заблокированных чатов">(0)</span>
+                                </button>
+                            </div>
+                            <div class="filters-row-secondary" style="display: flex; gap: 0.375rem; flex-wrap: wrap; align-items: center;">
+                                <!-- Умные фильтры -->
+                                <select id="filter-shop" class="filter-select" style="padding: 0.375rem 0.75rem; border: 1.5px solid var(--border); background: var(--bg-secondary); border-radius: 8px; font-size: 0.6875rem; color: var(--text); cursor: pointer; min-width: 120px;" onchange="applySmartFilters()">
+                                    <option value="">🏪 Все магазины</option>
+                                </select>
+                                <select id="filter-manager" class="filter-select" style="padding: 0.375rem 0.75rem; border: 1.5px solid var(--border); background: var(--bg-secondary); border-radius: 8px; font-size: 0.6875rem; color: var(--text); cursor: pointer; min-width: 120px;" onchange="applySmartFilters()">
+                                    <option value="">👤 Все менеджеры</option>
+                                </select>
+                                <select id="filter-time" class="filter-select" style="padding: 0.375rem 0.75rem; border: 1.5px solid var(--border); background: var(--bg-secondary); border-radius: 8px; font-size: 0.6875rem; color: var(--text); cursor: pointer; min-width: 140px;" onchange="applySmartFilters()">
+                                    <option value="">⏱️ Время без ответа</option>
+                                    <option value="5">⏱️ Более 5 минут</option>
+                                    <option value="10">⏱️ Более 10 минут</option>
+                                    <option value="20">⏱️ Более 20 минут</option>
+                                    <option value="60">⏱️ Более 1 часа</option>
+                                </select>
+                                <!-- Массовые действия -->
+                                <button id="bulk-actions-btn" class="filter-chip" style="display: none; background: var(--primary); color: white;" onclick="showBulkActionsMenu()">
+                                    <span>⚡</span>
+                                    <span>Массовые действия</span>
+                                    <span id="selected-count" style="background: rgba(255,255,255,0.3); padding: 0.125rem 0.375rem; border-radius: 10px; font-size: 0.625rem; margin-left: 0.25rem;">0</span>
+                                </button>
+                                <div class="sort-buttons-group">
+                                    <button class="sort-chip active" data-sort-order="newest" id="sort-newest">
+                                        <span>⬇️</span>
+                                        <span>Новые сверху</span>
+                                    </button>
+                                    <button class="sort-chip" data-sort-order="oldest" id="sort-oldest">
+                                        <span>⬆️</span>
+                                        <span>Старые сверху</span>
+                                    </button>
+                                </div>
+                                <button class="return-all-btn hidden" id="return-all-btn" onclick="returnAllChatsToPool()" title="Вернуть все мои чаты в пул">
+                                    <span>📤</span>
+                                    <span>Вернуть все в пул</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chats-scroll" id="chats-list" role="list" aria-label="Список чатов" aria-busy="false">
+                        <!-- Чаты загружаются через JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Основная область чата -->
+                <div class="chat-main">
+                    <div class="chat-window" id="chat-window">
+                        <div class="empty-chat" id="empty-chat">
+                            <div class="empty-chat-icon">💬</div>
+                            <h3>Выберите чат</h3>
+                            <p>Выберите чат из списка слева, чтобы начать общение</p>
+                        </div>
+
+                        <div id="chat-content" style="display: none; flex-direction: column; height: 100%; width: 100%; position: relative; overflow: hidden; box-sizing: border-box; min-height: 0;">
+                            <div class="chat-header-bar" role="banner" aria-label="Информация о чате">
+                                <div class="chat-header-info">
+                                    <div class="chat-header-name" id="chat-client-name" aria-label="Имя клиента">Клиент</div>
+                                    <div class="chat-header-details" id="chat-header-details" aria-label="Дополнительная информация о чате">
+                                        <span><span aria-hidden="true">📞</span> Телефон</span>
+                                        <span aria-hidden="true">•</span>
+                                        <span><span aria-hidden="true">🏪</span> Магазин</span>
+                                    </div>
+                                </div>
+                                <div class="chat-header-actions" id="chat-header-actions" role="toolbar" aria-label="Действия с чатом">
+                                    <!-- Кнопки действий загружаются через JavaScript -->
+                                </div>
+                            </div>
+
+                            <div class="messages-view" id="messages-container" role="log" aria-label="Сообщения чата" aria-live="polite" aria-atomic="false">
+                                <!-- Сообщения загружаются через JavaScript -->
+                            </div>
+
+                            <div class="input-section">
+                                <div class="quick-actions-row">
+                                    <button class="quick-action" onclick="showQuickRepliesMenu()" aria-label="Показать быстрые ответы" aria-expanded="false" aria-controls="quick-replies-menu" type="button">
+                                        <span aria-hidden="true">⚡</span> Быстрые ответы
+                                        <span id="quick-replies-count" aria-label="Количество быстрых ответов"></span>
+                                    </button>
+                                    <button class="quick-action" onclick="showQuickRepliesManagementModal()" aria-label="Управление быстрыми ответами" type="button">
+                                        <span aria-hidden="true">➕</span> Управление
+                                    </button>
+                                </div>
+                                <div id="avito-warning" style="display:none; margin-bottom:0.75rem; padding:0.75rem 1rem; border-radius: var(--radius); background: rgba(239,68,68,0.1); color:#b91c1c; border:1px solid rgba(239,68,68,0.3); font-weight:600;">
+                                    Для этого магазина не заданы OAuth ключи Avito. Отправка отключена.
+                                </div>
+                                <div class="input-row">
+                                    <div class="media-buttons">
+                                        <input type="file" id="image-upload" accept="image/jpeg,image/jpg,image/png,image/gif,image/bmp,image/heic" style="display: none;" onchange="handleImageUpload(event)">
+                                        <button class="media-button" onclick="document.getElementById('image-upload').click()" title="Загрузить изображение" aria-label="Загрузить изображение" type="button">
+                                            <span aria-hidden="true">📷</span>
+                                        </button>
+                                        <input type="file" id="voice-upload" accept="audio/*,video/mp4" style="display: none;" onchange="handleVoiceUpload(event)" aria-label="Загрузить голосовое сообщение">
+                                        <button class="media-button" onclick="document.getElementById('voice-upload').click()" title="Загрузить голосовое сообщение или аудио" aria-label="Загрузить голосовое сообщение или аудио" type="button">
+                                            <span aria-hidden="true">🎤</span>
+                                        </button>
+                                        <input type="file" id="media-upload" accept="*/*" style="display: none;" onchange="handleMediaUpload(event)" aria-label="Загрузить файл">
+                                        <button class="media-button" onclick="document.getElementById('media-upload').click()" title="Загрузить файл" aria-label="Загрузить файл" type="button">
+                                            <span aria-hidden="true">📎</span>
+                                        </button>
+                                    </div>
+                                    <textarea 
+                                        id="message-text" 
+                                        class="message-field" 
+                                        placeholder="Введите сообщение..."
+                                        rows="1"
+                                        aria-label="Введите сообщение"
+                                        aria-describedby="message-hint"
+                                    ></textarea>
+                                    <span id="message-hint" class="sr-only">Нажмите Enter для отправки, Shift+Enter для новой строки</span>
+                                    <button class="send-button" onclick="sendMessage()" aria-label="Отправить сообщение" type="button">
+                                        <span aria-hidden="true">📨</span>
+                                        <span>Отправить</span>
+                                    </button>
+                                </div>
+                                <div class="quick-replies-menu" id="quick-replies-menu">
+                                    <div class="quick-replies-header">
+                                        <div class="quick-replies-title">
+                                            <span>⚡</span>
+                                            <span>Быстрые ответы</span>
+                                        </div>
+                                    </div>
+                                    <div class="quick-replies-body" id="quick-replies-list">
+                                        <!-- Быстрые ответы загружаются через JavaScript -->
+                                    </div>
+                                    <div class="quick-replies-footer">
+                                        <span>Всего: <strong style="color: var(--primary);"><span id="quick-replies-total">0</span></strong></span>
+                                        <span>💡 Клик для вставки • 📤 Кнопка для отправки</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Модальное окно для управления быстрыми ответами -->
+                <div id="quick-replies-management-modal" class="modal-backdrop" style="display: none;">
+                    <div class="modal" style="max-width: 800px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border);">
+                            <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700;">⚡ Управление быстрыми ответами</h3>
+                            <button onclick="closeQuickRepliesManagementModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); padding: 0.25rem 0.5rem;">✕</button>
+                        </div>
+                        <div style="flex: 1; overflow-y: auto; margin-bottom: 1rem;" role="region" aria-label="Список быстрых ответов">
+                            <div id="quick-replies-management-list" style="display: grid; gap: 1rem;" role="list" aria-label="Быстрые ответы">
+                                <!-- Список быстрых ответов загружается через JavaScript -->
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; border-top: 2px solid var(--border);">
+                            <button onclick="closeQuickRepliesManagementModal()" aria-label="Закрыть" style="padding: 0.75rem 1.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-weight: 600;" type="button">Закрыть</button>
+                            <button onclick="showQuickReplyEditModal()" aria-label="Добавить новый быстрый ответ" style="padding: 0.75rem 1.5rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-weight: 600;" type="button">
+                                <span aria-hidden="true">➕</span> Добавить новый
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Модальное окно для редактирования/добавления быстрого ответа -->
+                <div id="quick-reply-edit-modal" class="modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="quick-reply-edit-title" aria-hidden="true">
+                    <div class="modal" style="max-width: 600px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border);">
+                            <h3 id="quick-reply-edit-title" style="margin: 0; font-size: 1.25rem; font-weight: 700;">Добавить быстрый ответ</h3>
+                            <button onclick="closeQuickReplyEditModal()" aria-label="Закрыть окно редактирования" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); padding: 0.25rem 0.5rem;" type="button">
+                                <span aria-hidden="true">✕</span>
+                            </button>
+                        </div>
+                        <form id="quick-reply-edit-form" onsubmit="saveQuickReply(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <input type="hidden" id="quick-reply-edit-id" value="">
+                            <div>
+                                <label for="quick-reply-edit-shortcut" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem;">Сокращение (shortcut):</label>
+                                <input type="text" id="quick-reply-edit-shortcut" placeholder="/привет" required aria-label="Сокращение для быстрого ответа" aria-describedby="shortcut-hint" style="width: 100%; padding: 0.75rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 0.9375rem; box-sizing: border-box;">
+                                <div id="shortcut-hint" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Начните с / для использования в чате</div>
+                            </div>
+                            <div>
+                                <label for="quick-reply-edit-message" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem;">Сообщение:</label>
+                                <textarea id="quick-reply-edit-message" placeholder="Введите текст быстрого ответа..." required rows="6" aria-label="Текст быстрого ответа" style="width: 100%; padding: 0.75rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 0.9375rem; resize: vertical; font-family: inherit; box-sizing: border-box;"></textarea>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+                                <button type="button" onclick="closeQuickReplyEditModal()" aria-label="Отменить редактирование" style="padding: 0.75rem 1.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-weight: 600;">Отмена</button>
+                                <button type="submit" aria-label="Сохранить быстрый ответ" style="padding: 0.75rem 1.5rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-weight: 600;">
+                                    <span aria-hidden="true">💾</span> Сохранить
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Правая панель с объявлением -->
+                <div class="listing-sidebar">
+                    <div class="listing-sidebar-header">
+                        <h3 class="listing-sidebar-title">📦 Объявление</h3>
+                    </div>
+                    <div class="listing-sidebar-content" id="listing-sidebar-content">
+                        <div class="listing-sidebar-empty">
+                            <div class="listing-sidebar-empty-icon">📦</div>
+                            <p>Выберите чат, чтобы увидеть объявление</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+<button id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollMessagesBottom()" aria-label="Прокрутить вниз к последним сообщениям" type="button">
+    ⬇️ Вниз
+</button>
+
+{% endblock %}
+
+{% block early_scripts %}
+<script>
+    // Определяем переменные пользователя ДО загрузки модулей
+    window.currentUsername = '{{ user.username if user else "" }}';
+    window.currentUserId = {% if user and user.id is not none %}{{ user.id }}{% else %}null{% endif %};
+    window.currentUserRole = '{{ user.role if user else "" }}';
+    window.isAdmin = window.currentUserRole === 'admin' || window.currentUserRole === 'super_admin';
+    
+    // Определяем глобальные функции синхронизации ДО загрузки DOM
+    window.syncChats = async function syncChats() {
+        const btn = document.getElementById('sync-btn');
+        if (!btn) {
+            console.error('Кнопка синхронизации не найдена');
+            return;
+        }
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.classList.add('syncing');
+            btn.innerHTML = '⏳ Синхронизация...';
+            btn.disabled = true;
+
+            const response = await fetch('/api/chats/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({})
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Ошибка синхронизации');
+            }
+
+            const result = await response.json();
+            
+            // Используем showNotification если она доступна, иначе alert
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('✅ Синхронизация завершена', 'success');
+            } else {
+                alert('✅ Синхронизация завершена');
+            }
+            
+            // Обновляем чаты после синхронизации, если функция доступна
+            if (typeof window.loadChats === 'function') {
+                await window.loadChats(false);
+            } else {
+                // Перезагружаем страницу, если функция еще не загружена
+                window.location.reload();
+            }
+        } catch (error) {
+            debugError('Ошибка синхронизации:', error);
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`❌ ${error.message}`, 'error');
+            } else {
+                alert(`❌ Ошибка: ${error.message}`);
+            }
+        } finally {
+            if (btn) {
+                btn.classList.remove('syncing');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    };
+    
+</script>
+{% endblock %}
+
+{% block scripts %}
+    <script type="module" src="{{ url_for('static', filename='js/chats/main.js') }}"></script>
+{% endblock %}
