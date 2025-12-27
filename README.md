@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 Avito CRM (локальный проект)
 
 Кратко
@@ -107,4 +108,166 @@ pytest -q
 - Никогда не храните секреты в репозитории — используйте провайдер секретов или переменные окружения.
 - Ограничьте доступ к webhook-эндпойнтам по IP/подписи (используйте `AVITO_APPLY_SECRET`).
 
+=======
+# 🎮 OSAGAMING CRM
+>>>>>>> Stashed changes
 
+> Современная система управления взаимоотношениями с клиентами для игрового бизнеса
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
+
+## 🌟 О проекте
+
+**OSAGAMING CRM** — это полноценная CRM-система для управления клиентской базой в игровом бизнесе. Проект разработан с нуля как современное портфолио full-stack разработчика.
+
+### Основные возможности:
+- 🔐 **JWT-авторизация** — безопасный вход в систему
+- 💬 **Управление чатами** — создание и просмотр чатов с клиентами
+- 📊 **Дашборд** — статистика и метрики в реальном времени
+- ⚙️ **Настройки** — управление профилем пользователя
+- 🎨 **Современный UI** — адаптивный дизайн на Tailwind CSS
+
+## 🚀 Быстрый старт
+
+### Предварительные требования:
+- Python 3.8+
+- Node.js 16+
+- npm или yarn
+
+### Запуск проекта
+
+**1. Клонируйте репозиторий:**
+```bash
+git clone <repository-url>
+cd osagaming-crm
+```
+
+**2. Запустите backend:**
+```bash
+cd backend
+pip install -r requirements.txt
+python main_simple.py
+```
+Backend будет доступен по адресу: http://localhost:8000
+
+**3. Запустите frontend (в отдельном терминале):**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend будет доступен по адресу: http://localhost:3000 (режим разработки)
+
+**4. Запуск в Docker (production):**
+```bash
+docker-compose up --build
+```
+Приложение будет доступно по адресу: http://localhost:8000
+
+### Тестовые данные для входа:
+```
+Email: admin@osagaming.com
+Пароль: admin123
+```
+
+## 📁 Структура проекта
+
+```
+osagaming-crm/
+├── backend/
+│   ├── main_simple.py      # FastAPI приложение
+│   ├── requirements.txt    # Python зависимости
+│   └── crm.db             # SQLite база данных
+├── frontend/
+│   ├── src/
+│   │   ├── pages/         # Страницы приложения
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── ChatsPage.tsx
+│   │   │   ├── ChatDetailPage.tsx
+│   │   │   ├── SettingsPage.tsx
+│   │   │   └── AnalyticsPage.tsx
+│   │   ├── components/    # Переиспользуемые компоненты
+│   │   │   └── Layout.tsx
+│   │   ├── services/      # API клиенты
+│   │   │   └── api.ts
+│   │   ├── store/         # Глобальное состояние
+│   │   │   └── authStore.ts
+│   │   ├── App.tsx        # Главный компонент
+│   │   ├── main.tsx       # Точка входа
+│   │   └── index.css      # Глобальные стили
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tailwind.config.js
+└── README.md
+```
+
+## 🛠️ Технологический стек
+
+### Backend
+- **FastAPI** — высокопроизводительный веб-фреймворк
+- **SQLAlchemy** — ORM для работы с базой данных
+- **Pydantic** — валидация данных
+- **JWT** — аутентификация
+- **SQLite** — встроенная база данных
+
+### Frontend  
+- **React 18** — библиотека для создания UI
+- **TypeScript** — типизированный JavaScript
+- **Vite** — быстрый инструмент сборки
+- **Tailwind CSS** — utility-first CSS фреймворк
+- **Zustand** — управление состоянием
+- **React Query** — управление серверным состоянием
+- **React Router** — маршрутизация
+
+## 📚 API Endpoints
+
+### Аутентификация
+- `POST /api/auth/login` — вход в систему
+- `POST /api/auth/register` — регистрация
+- `GET /api/auth/me` — информация о текущем пользователе
+
+### Чаты
+- `GET /api/chats` — список всех чатов
+- `POST /api/chats` — создание нового чата
+- `GET /api/chats/{id}` — детали чата
+- `DELETE /api/chats/{id}` — удаление чата
+
+### Сообщения
+- `GET /api/chats/{chat_id}/messages` — сообщения в чате
+- `POST /api/chats/{chat_id}/messages` — отправка сообщения
+
+### Пользователи
+- `GET /api/users` — список пользователей
+- `PUT /api/users/me` — обновление профиля
+
+### Статистика
+- `GET /api/analytics/dashboard` — данные для дашборда
+
+## 📖 Документация
+
+После запуска backend доступна интерактивная документация API:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+
+Подробное руководство пользователя: [USER_GUIDE.md](USER_GUIDE.md)
+
+## 🎯 Цель проекта
+
+Этот проект демонстрирует навыки:
+- **Backend** — FastAPI, SQLAlchemy, асинхронное программирование
+- **Frontend** — React, TypeScript, современные практики
+- **Базы данных** — проектирование, миграции, оптимизация
+- **Архитектура** — чистый код, модульность, масштабируемость
+- **UI/UX** — адаптивный дизайн, accessibility
+
+## 📝 Лицензия
+
+MIT License
+
+---
+
+**Разработано с ❤️ как портфолио full-stack разработчика**

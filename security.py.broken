@@ -1,0 +1,208 @@
+"""
+Безопасность приложения
+JWT аутентификация, авторизация и защита
+"""
+
+from datetime import datetime, timedelta
+from typing import Optional, List
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.core.config import settings
+from app.core.database import get_db
+from app.models.user import User
+
+# Настройка хеширования паролей
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Схема для Bearer токена
+security = HTTPBearer()
+
+class SecurityManager:
+    """Менеджер безопасности"""
+    
+    @staticmethod
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        """Проверка пароля"""
+        # bcrypt has a 72-byte input limit; ensure we pass bytes <=72 bytes
+        try:
+            if isinstance(plain_password, str):
+                b = plain_password.encode('utf-8')
+            else:
+                b = plain_password
+            if len(b) > 72:
+                b = b[:72]
+        except Exception:
+            # fallback: try to coerce to bytes
+            b = plain_password.encode('utf-8') if isinstance(plain_password, str) else plain_password
+
+        # Prefer using the bcrypt library's checkpw directly to avoid passlib
+        # backend detection issues that can trigger the 72-byte error.
+        try:
+            import bcrypt as _bcrypt_mod
+            if isinstance(hashed_password, str):
+                hp = hashed_password.encode('utf-8')
+            elif isinstance(hashed_password, bytes):
+                hp = hashed_password
+            else:
+                hp = str(hashed_password).encode('utf-8')
+
+            return _bcrypt_mod.checkpw(b, hp)
+        except Exception as exc:
+            try:
+                # fallback to passlib; log the exception to help diagnose
+                print('bcrypt.checkpw failed:', exc)
+            except Exception:
+                pass
+            return pwd_context.verify(b, hashed_password)
+    
+    @staticmethod
+    def get_password_hash(password: str) -> str:
+        """Хеширование пароля"""
+        return pwd_context.hash(password)
+    
+    @staticmethod
+    def create_access_token(
+        # Prefer passlib verify; in case underlying bcrypt bindings differ,
+        # ensure we handle the 72-byte limit and use bcrypt.checkpw as fallback.
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception:
+            try:
+                # ensure bytes
+                if isinstance(plain_password, str):
+                    plain_b = plain_password.encode("utf-8")
+                else:
+                    plain_b = plain_password
+
+                if isinstance(hashed_password, str):
+                    hashed_b = hashed_password.encode("utf-8")
+                else:
+                    hashed_b = hashed_password
+
+                # bcrypt has a 72-byte limit for passwords
+                if len(plain_b) > 72:
+                    plain_b = plain_b[:72]
+
+                import bcrypt as _bcrypt
+                return _bcrypt.checkpw(plain_b, hashed_b)
+            except Exception:
+                return False
+
+# Глобальный экземпляр
+security_manager = SecurityManager()
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """Получение текущего пользователя из JWT токена"""
+    
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Не удалось проверить учетные данные",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    # Проверка токена
+    payload = security_manager.verify_token(credentials.credentials)
+    if payload is None:
+        raise credentials_exception
+    
+    # Извлечение данных пользователя
+    email: str = payload.get("sub")
+    if email is None:
+        raise credentials_exception
+    
+    # Поиск пользователя в БД (ORM-only). При ошибке — 401.
+    try:
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+    except Exception:
+        raise credentials_exception
+
+    if user is None:
+        raise credentials_exception
+    
+    return user
+
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Получение активного пользователя"""
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=400, 
+            detail="Пользователь неактивен"
+        )
+    return current_user
+
+async def get_current_superuser(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Получение суперпользователя"""
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=400, 
+            detail="Недостаточно прав доступа"
+        )
+    return current_user
+
+def require_permissions(required_permissions: List[str]):
+    """Декоратор для проверки прав доступа"""
+    def permission_checker(current_user: User = Depends(get_current_user)):
+        user_permissions = [perm.name for perm in current_user.permissions]
+        
+        for permission in required_permissions:
+            if permission not in user_permissions and not current_user.is_superuser:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Недостаточно прав: требуется {permission}"
+                )
+        return current_user
+    
+    return permission_checker
+
+def setup_security(app):
+    """Настройка безопасности для FastAPI приложения"""
+    
+    @app.middleware("http")
+    async def add_security_headers(request, call_next):
+        """Добавление security headers"""
+        response = await call_next(request)
+        
+        # Защита от XSS
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        
+        # HSTS для HTTPS
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = \
+                "max-age=31536000; includeSubDomains"
+        
+        # Content Security Policy
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:;"
+        )
+        
+        return response
+    
+    @app.middleware("http")
+    async def rate_limit_middleware(request, call_next):
+        """Простой rate limiting middleware"""
+        # В production используйте медли Redis или специализированные библиотеки
+        client_ip = request.client.host
+        
+        # TODO: Реализовать proper rate limiting с Redis
+        # Пока просто пропускаем
+        response = await call_next(request)
+        
+        return response

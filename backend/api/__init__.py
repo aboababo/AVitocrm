@@ -1,3 +1,0 @@
-"""
-API модуль - REST endpoints
-"""
