@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 Avito CRM (локальный проект)
 
 Кратко
@@ -112,6 +113,10 @@ pytest -q
 # 🎮 OSAGAMING CRM
 >>>>>>> Stashed changes
 
+=======
+# 🎮 OSAGAMING CRM
+
+>>>>>>> Stashed changes
 > Современная система управления взаимоотношениями с клиентами для игрового бизнеса
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
